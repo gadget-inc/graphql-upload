@@ -117,19 +117,22 @@ module.exports = function processRequest(
           if (upload.file) upload.file.capacitor.release();
     };
 
+    let requestEndedCleanly = false;
     /**
      * Handles when the request is closed before it properly ended.
      * @kind function
-     * @name processRequest~abort
+     * @name processRequest~abortIfUnclean
      * @ignore
      */
-    const abort = () => {
-      exit(
-        createError(
-          499,
-          'Request disconnected during file upload stream parsing.'
-        )
-      );
+    const abortIfUnclean = () => {
+      if (!requestEndedCleanly) {
+        exit(
+          createError(
+            499,
+            'Request disconnected during file upload stream parsing.'
+          )
+        );
+      }
     };
 
     parser.on(
@@ -351,9 +354,9 @@ module.exports = function processRequest(
     response.once('finish', release);
     response.once('close', release);
 
-    request.once('close', abort);
+    request.once('close', abortIfUnclean);
     request.once('end', () => {
-      request.removeListener('close', abort);
+      requestEndedCleanly = true;
     });
 
     request.pipe(parser);
